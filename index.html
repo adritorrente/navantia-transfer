@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Navantia Transfer · Compartir archivos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --blue:#005db5;--blue-dk:#004A90;--blue-xdk:#003470;
+      --green:#00A85A;--red:#E53E3E;--white:#fff;
+      --bg:#EFF5FC;--border:#C2D8F0;--text:#0B2540;--muted:#5A7B99;
+    }
+    html,body{min-height:100vh;font-family:'Barlow',sans-serif;color:var(--text)}
+    body{
+      background:linear-gradient(145deg,var(--blue-xdk) 0%,var(--blue) 45%,#0078d4 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:20px;
+    }
+
+    /* ── HEADER ── */
+    .logo-bar{position:fixed;top:0;left:0;right:0;background:rgba(0,52,112,.55);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.12);padding:10px 24px;display:flex;align-items:center;gap:14px;z-index:100}
+    .logo-bar svg{width:120px;height:auto;filter:brightness(0) invert(1)}
+    .logo-bar span{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.7);border-left:1px solid rgba(255,255,255,.2);padding-left:14px}
+
+    /* ── CARD ── */
+    .card{
+      background:rgba(255,255,255,.97);border-radius:20px;
+      box-shadow:0 24px 80px rgba(0,20,60,.45);
+      width:100%;max-width:520px;overflow:hidden;
+      margin-top:60px;
+    }
+
+    /* ── DROP ZONE ── */
+    .drop{
+      padding:52px 36px 40px;text-align:center;cursor:pointer;
+      transition:background .18s;position:relative;
+    }
+    .drop.over{background:rgba(0,93,181,.05)}
+    .drop-ring{
+      border:2.5px dashed var(--border);border-radius:14px;
+      padding:44px 28px;transition:border-color .18s,background .18s;
+    }
+    .drop.over .drop-ring,.drop-ring:hover{border-color:var(--blue);background:rgba(0,93,181,.04)}
+    .drop-ico{font-size:52px;line-height:1;margin-bottom:16px;display:block}
+    .drop-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px}
+    .drop-sub{font-size:13px;color:var(--muted)}
+    .drop-sub b{color:var(--blue)}
+    .file-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+    /* ── FILE SELECTED ── */
+    .file-info{display:none;padding:0 36px 28px}
+    .file-row{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px}
+    .file-icon{font-size:28px;flex-shrink:0}
+    .file-meta{flex:1;min-width:0}
+    .file-name{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .file-size{font-size:12px;color:var(--muted);margin-top:2px}
+    .remove-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;padding:4px;transition:color .15s}
+    .remove-btn:hover{color:var(--red)}
+
+    /* Progress */
+    .progress{display:none;margin-bottom:18px}
+    .progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px}
+    .progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--blue));border-radius:4px;transition:width .1s linear}
+    .progress-txt{font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--muted);text-align:center}
+
+    /* Upload button */
+    .upload-btn{
+      width:100%;padding:15px;background:linear-gradient(135deg,var(--blue),var(--blue-xdk));
+      color:#fff;border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;
+      font-size:18px;font-weight:700;letter-spacing:.06em;cursor:pointer;
+      transition:transform .15s,box-shadow .15s;
+    }
+    .upload-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,93,181,.4)}
+    .upload-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+    /* ── SUCCESS ── */
+    .success{display:none;padding:32px 36px 36px;text-align:center}
+    .success-ico{font-size:54px;margin-bottom:12px;display:block}
+    .success-title{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--green);margin-bottom:4px}
+    .success-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+    .link-box{display:flex;align-items:center;gap:0;border:2px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;background:var(--bg)}
+    .link-txt{flex:1;padding:13px 16px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;border:none;outline:none;cursor:text}
+    .copy-btn{flex-shrink:0;padding:13px 20px;background:var(--blue);color:#fff;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:.06em;transition:background .15s}
+    .copy-btn:hover{background:var(--blue-dk)}
+    .copy-btn.done{background:var(--green)}
+    .expiry-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(0,93,181,.08);border:1px solid rgba(0,93,181,.2);border-radius:20px;padding:7px 16px;font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--blue-dk);font-weight:600}
+    .new-btn{display:block;margin-top:18px;width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;background:#fff;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
+    .new-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+    /* ── ERROR ── */
+    .err-msg{display:none;padding:14px 36px;background:rgba(229,62,62,.08);border-top:1px solid rgba(229,62,62,.2);font-size:13px;color:var(--red);text-align:center}
+
+    /* ── FOOTER ── */
+    .footer-bar{margin-top:22px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;color:rgba(255,255,255,.35);letter-spacing:.08em}
+    .footer-bar b{color:rgba(255,255,255,.55)}
+
+    @media(max-width:480px){
+      .card{border-radius:14px;margin-top:50px}
+      .drop{padding:36px 18px 28px}
+      .file-info,.success{padding-left:18px;padding-right:18px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Logo bar -->
+<div class="logo-bar">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1431.28 175.52" aria-label="Navantia">
+    <path d="M449.4 172V0h49.24Q527.29 59.72 556 119.39h9V0h33.4v172c-16.72.1-33.45 0-50.17 0Q520 112.34 491.85 52.63h-9.07V172ZM175.73 9c24.69-10.83 54-6 76.32 8.24 32.32 21.23 64.52 42.63 96.82 63.87q12.9-6.21 25.84-12.33c5.42 5 11.39 9.41 16.53 14.7-12.89 6.07-25.73 12.27-38.59 18.4-8 3.73-15.89 8.16-24.6 10.19-22.63 5.8-47.08.06-66.42-12.51Q213.69 68 165.79 36.32q-16 7.59-31.93 15.26Q125.41 44.32 117 37c19.6-9.3 39.11-18.75 58.73-28Zm1006.43 12.14h33v33h20.62v26h-20.62v91.87h-33V80.14h-20.37v-26h20.37c.01-11.01-.02-22 0-33Zm69 0h33v21h-33q-.01-10.51 0-21ZM662.07 52.67c12.3-3.23 26.15-2.37 37.18 4.35 6.72 4 12 10 16.16 16.59 0-6.5-.06-13 0-19.49h31.82v117.87h-31.85v-19.56c-5.7 9.24-14 17.26-24.53 20.67-14.83 4.81-32 2.26-44.55-7.09a61.7 61.7 0 0 1-23.89-39.62c-2.61-16.48-.86-34.31 8-48.73 7.3-11.57 18.25-21.41 31.66-24.99Zm18.2 27.87c-12.32 1.27-22.74 11.27-25.61 23.15-3.71 14.31 1.57 31.6 15.14 38.76 16.23 8.56 37.72-.22 45.5-16.26.2-8.68.14-17.38 0-26-6.3-12.74-20.78-21.27-35.03-19.65ZM922.44 52.8c12.48-3.42 26.62-2.57 37.81 4.32 6.6 4 11.79 9.91 15.91 16.35V54.14h32V172h-32v-19.36c-5.32 8.43-12.71 15.88-22.09 19.61-17.55 6.94-38.9 2.56-52.31-10.74-14-13-20.45-32.54-19.54-51.36.31-13.32 4.26-26.75 12.45-37.38 6.99-9.2 16.49-16.87 27.77-19.97Zm17.91 27.83c-11.24 1.49-20.8 10.23-24.24 20.9a39.15 39.15 0 0 0 .14 23.42c3.15 9.82 11.46 18.14 21.74 20.16 15 3.23 31.31-5.22 38.06-18.81.25-8.35 0-16.72.11-25.07.08-2.38-1.76-4.18-3-6-7.44-10.07-20.22-16.37-32.81-14.6Zm124.41-6.89C1073.35 61 1087.67 52 1103.12 51c10.48-.66 21.54 1.74 29.89 8.39 7.69 6 12.38 15.2 14.15 24.69 1.37 6.65.92 13.47 1 20.21V172h-32.87v-67.77c0-6.88-2-14.29-7.39-18.9-5.7-4.91-13.8-5.63-21-4.57-8.81 1.28-16.61 6.51-22.18 13.31.06 26 0 52 0 77.93h-32.87V54.13h32.86c.06 6.54.08 13.07.05 19.61Zm277.86-20c14.24-4.92 31.2-3.85 43.56 5.28a53.08 53.08 0 0 1 13.11 14.5V54.14h32v117.87h-32v-19.39c-5.45 8.71-13.18 16.34-22.94 20a49.86 49.86 0 0 1-46.68-7 61.59 61.59 0 0 1-23.11-38.29c-3.11-17.87-.82-37.47 9.82-52.56 6.53-9.29 15.42-17.25 26.24-21.03Zm20.74 26.9A29.46 29.46 0 0 0 1345 91.17c-8.77 10.4-9.59 26.06-3.83 38.08 3.86 7.84 11.19 14.11 19.86 15.83 15 3.29 31.45-5.17 38.19-18.84.23-8.33 0-16.68.1-25 .11-2.17-1.53-3.81-2.61-5.5-7.48-10.39-20.52-16.95-33.35-15.1ZM762.31 54.13c11 0 22.05.07 33.07 0 6.35 30.23 12.41 60.53 18.65 90.79h8.8q9.27-45.36 18.56-90.72h33.38q-14.52 58.88-29.11 117.8h-54.23q-14.58-58.93-29.12-117.87Zm488.85.01h33V172h-33q-.01-58.92 0-117.86ZM58 65.25c24.84-11.22 54.57-6.46 77.06 8q48.33 31.83 96.57 63.79c8.74-3.95 17.3-8.28 26-12.3 5.54 4.89 11.17 9.66 16.72 14.53-16.5 8-33.07 15.81-49.59 23.74-20.66 10.18-45.62 9.19-66.41-.09-9.49-4-17.81-10.13-26.39-15.7l-83.25-55q-16 7.61-31.94 15.26C11.19 102.65 5.57 97.83 0 93q29-13.92 58-27.75Z" fill="#fff"/>
+  </svg>
+  <span>Transfer</span>
+</div>
+
+<!-- Main card -->
+<div class="card" id="card">
+
+  <!-- Drop zone -->
+  <div class="drop" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" class="file-input" onchange="onFileSelect(this.files[0])"/>
+    <div class="drop-ring">
+      <span class="drop-ico">📦</span>
+      <div class="drop-title">Arrastra tu archivo aquí</div>
+      <div class="drop-sub">o haz clic para seleccionarlo<br><b>Máximo 100 MB · Se elimina a las 48 h</b></div>
+    </div>
+  </div>
+
+  <!-- File selected -->
+  <div class="file-info" id="fileInfo">
+    <div class="file-row">
+      <span class="file-icon" id="fileIcon">📄</span>
+      <div class="file-meta">
+        <div class="file-name" id="fileName">—</div>
+        <div class="file-size" id="fileSize">—</div>
+      </div>
+      <button class="remove-btn" onclick="resetUI()" title="Quitar">✕</button>
+    </div>
+    <div class="progress" id="progressBox">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-txt" id="progressTxt">Preparando…</div>
+    </div>
+    <button class="upload-btn" id="uploadBtn" onclick="startUpload()">⬆&nbsp; Subir archivo</button>
+  </div>
+
+  <!-- Error -->
+  <div class="err-msg" id="errMsg"></div>
+
+  <!-- Success -->
+  <div class="success" id="successBox">
+    <span class="success-ico">✅</span>
+    <div class="success-title">¡Listo para compartir!</div>
+    <div class="success-sub">Copia el enlace y envíaselo a quien quieras</div>
+    <div class="link-box">
+      <input class="link-txt" id="shareLink" readonly onclick="this.select()"/>
+      <button class="copy-btn" id="copyBtn" onclick="copyLink()">Copiar</button>
+    </div>
+    <div class="expiry-badge">⏱ Expira en <span id="countdown">48 h 00 min</span></div>
+    <button class="new-btn" onclick="resetUI()">+ Enviar otro archivo</button>
+  </div>
+</div>
+
+<div class="footer-bar"><b>INFRA FERROL · Sistemas Inteligentes</b> — Navantia S.A.</div>
+
+<script>
+const MAX_BYTES = 100 * 1024 * 1024;
+let selectedFile = null, expiresAt = null;
+
+const ICONS = {
+  pdf:'📕', doc:'📘', docx:'📘', xls:'📗', xlsx:'📗',
+  ppt:'📙', pptx:'📙', zip:'🗜️', rar:'🗜️', gz:'🗜️',
+  jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️', svg:'🖼️', webp:'🖼️',
+  mp4:'🎬', mov:'🎬', avi:'🎬', mkv:'🎬',
+  mp3:'🎵', wav:'🎵', m4a:'🎵',
+  txt:'📃', csv:'📊', json:'📋', xml:'📋',
+};
+const fileIcon = f => ICONS[f.split('.').pop()?.toLowerCase()] || '📄';
+const fmtSize  = b => b >= 1e6 ? (b/1e6).toFixed(1)+' MB' : b >= 1e3 ? (b/1e3).toFixed(0)+' KB' : b+' B';
+const show = id => document.getElementById(id).style.display = '';
+const hide = id => document.getElementById(id).style.display = 'none';
+
+function onFileSelect(file) {
+  if (!file) return;
+  if (file.size > MAX_BYTES) { showErr(`Archivo demasiado grande (${fmtSize(file.size)}). Máximo 100 MB.`); return; }
+  selectedFile = file;
+  document.getElementById('fileName').textContent  = file.name;
+  document.getElementById('fileSize').textContent  = fmtSize(file.size);
+  document.getElementById('fileIcon').textContent  = fileIcon(file.name);
+  hide('errMsg');
+  hide('dropZone');
+  document.getElementById('fileInfo').style.display = 'block';
+  document.getElementById('progressBox').style.display = 'none';
+}
+
+// Drag & drop
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  onFileSelect(e.dataTransfer.files[0]);
+});
+
+async function startUpload() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  hide('errMsg');
+  document.getElementById('progressBox').style.display = 'block';
+  setProgress(0, 'Preparando subida…');
+
+  try {
+    // 1. Pedir URL firmada al backend
+    const res = await fetch('/.netlify/functions/create-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: selectedFile.name, filesize: selectedFile.size, mimetype: selectedFile.type }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al preparar la subida');
+
+    setProgress(10, 'Subiendo…');
+
+    // 2. Subir directamente a Supabase Storage con seguimiento de progreso
+    await uploadWithProgress(data.signedUrl, selectedFile, pct => setProgress(10 + pct * 0.88, `Subiendo… ${Math.round(pct)}%`));
+
+    setProgress(100, '¡Completado!');
+
+    // 3. Mostrar éxito
+    const link = `${location.origin}/d/${data.transferId}`;
+    expiresAt = Date.now() + 48 * 3600 * 1000;
+    document.getElementById('shareLink').value = link;
+    document.getElementById('fileInfo').style.display = 'none';
+    show('successBox');
+    tickCountdown();
+
+  } catch (e) {
+    btn.disabled = false;
+    showErr(e.message);
+  }
+}
+
+function uploadWithProgress(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress((e.loaded / e.total) * 100); };
+    xhr.onload  = () => xhr.status < 300 ? resolve() : reject(new Error(`Error HTTP ${xhr.status} al subir`));
+    xhr.onerror = () => reject(new Error('Error de red al subir el archivo'));
+    xhr.send(file);
+  });
+}
+
+function setProgress(pct, txt) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressTxt').textContent  = txt;
+}
+
+function copyLink() {
+  const val = document.getElementById('shareLink').value;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copiado'; btn.classList.add('done');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('done'); }, 2500);
+  });
+}
+
+function tickCountdown() {
+  const el = document.getElementById('countdown');
+  const update = () => {
+    const ms = expiresAt - Date.now();
+    if (ms <= 0) { el.textContent = 'expirado'; return; }
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    el.textContent = `${h} h ${String(m).padStart(2,'0')} min`;
+  };
+  update();
+  setInterval(update, 30000);
+}
+
+function resetUI() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  hide('successBox'); hide('errMsg');
+  document.getElementById('uploadBtn').disabled = false;
+  show('dropZone');
+}
+
+function showErr(msg) {
+  const el = document.getElementById('errMsg');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>

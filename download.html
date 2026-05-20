@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Navantia Transfer · Descargar</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #003865;
+      --blue:   #005db5;
+      --sky:    #0099d8;
+      --light:  #e8f2fb;
+      --green:  #27ae60;
+      --red:    #c0392b;
+      --gray:   #6b7a8d;
+      --border: #d1dce8;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #eaf2fc 0%, #f5f8fe 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--navy);
+      height: 54px;
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      flex-shrink: 0;
+    }
+    .topbar svg { display: block; }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(0,56,101,.12);
+      padding: 48px 44px 44px;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+    }
+
+    /* ── States ── */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading */
+    .spinner {
+      width: 52px; height: 52px;
+      border: 4px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .9s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #state-loading p { color: var(--gray); font-size: .95rem; }
+
+    /* File info */
+    .file-icon {
+      width: 72px; height: 72px;
+      border-radius: 16px;
+      background: var(--light);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 2.2rem;
+    }
+
+    .filename {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--navy);
+      word-break: break-all;
+      margin-bottom: 6px;
+    }
+    .filesize {
+      font-size: .9rem;
+      color: var(--gray);
+      margin-bottom: 28px;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: center;
+      gap: 28px;
+      margin-bottom: 32px;
+    }
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .meta-label {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--gray);
+      font-weight: 600;
+    }
+    .meta-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .meta-value.expiring { color: #e67e22; }
+    .meta-value.soon     { color: var(--red); }
+
+    /* Download button */
+    .btn-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--blue), var(--sky));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 18px rgba(0,93,181,.35);
+    }
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0,93,181,.45);
+    }
+    .btn-download:active { transform: translateY(0); }
+    .btn-download svg { flex-shrink: 0; }
+
+    .download-note {
+      margin-top: 14px;
+      font-size: .8rem;
+      color: var(--gray);
+    }
+
+    /* Expired / Error */
+    .error-icon {
+      font-size: 3.5rem;
+      margin-bottom: 18px;
+    }
+    #state-expired h2, #state-error h2 {
+      font-size: 1.4rem;
+      color: var(--navy);
+      margin-bottom: 12px;
+    }
+    #state-expired p, #state-error p {
+      color: var(--gray);
+      font-size: .95rem;
+      line-height: 1.6;
+    }
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 28px;
+      padding: 12px 24px;
+      background: var(--light);
+      color: var(--blue);
+      border: none;
+      border-radius: 10px;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .btn-back:hover { background: #d3e6f8; }
+
+    /* Separator */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0 24px;
+    }
+    .powered {
+      font-size: .75rem;
+      color: #b0bac8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top navigation bar with Navantia logo -->
+  <header class="topbar">
+    <svg width="130" height="32" viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- White Navantia wordmark simplified -->
+      <text x="0" y="24" font-family="Arial, sans-serif" font-weight="700" font-size="22" fill="white" letter-spacing="1">NAVANTIA</text>
+      <rect x="0" y="28" width="100" height="2.5" fill="#0099d8" rx="1"/>
+    </svg>
+  </header>
+
+  <main>
+    <div class="card">
+
+      <!-- LOADING -->
+      <div class="state active" id="state-loading">
+        <div class="spinner"></div>
+        <p>Obteniendo información del archivo…</p>
+      </div>
+
+      <!-- FILE INFO + DOWNLOAD -->
+      <div class="state" id="state-ready">
+        <div class="file-icon" id="fileIcon">📄</div>
+        <div class="filename" id="fileName">—</div>
+        <div class="filesize" id="fileSize">—</div>
+
+        <div class="meta-row">
+          <div class="meta-item">
+            <span class="meta-label">Expira en</span>
+            <span class="meta-value" id="metaExpiry">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Descargas</span>
+            <span class="meta-value" id="metaDownloads">—</span>
+          </div>
+        </div>
+
+        <a id="btnDownload" href="#" class="btn-download" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar archivo
+        </a>
+        <p class="download-note">El enlace de descarga caduca en 10 minutos. Recárgalo si es necesario.</p>
+
+        <hr class="divider" />
+        <p class="powered">Transferencias seguras · Auto-eliminación 48 h · Navantia Transfer</p>
+      </div>
+
+      <!-- EXPIRED -->
+      <div class="state" id="state-expired">
+        <div class="error-icon">⏰</div>
+        <h2>Enlace expirado</h2>
+        <p>Este enlace tenía una validez de <strong>48 horas</strong> y ha caducado.<br>El archivo fue eliminado automáticamente.</p>
+        <a href="/" class="btn-back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Subir un archivo nuevo
+        </a>
+      </div>
+
+      <!-- NOT FOUND / ERROR -->
+      <div class="state" id="state-error">
+        <div class="error-icon">🔍</div>
+        <h2 id="errorTitle">Archivo no encontrado</h2>
+        <p id="errorMsg">El enlace es incorrecto o el archivo ya no existe.</p>
+        <a href="/" class="btn-back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Ir al inicio
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // ── Helpers ────────────────────────────────────────────
+    function show(id) {
+      document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function fmtBytes(bytes) {
+      if (bytes < 1024)        return bytes + ' B';
+      if (bytes < 1024*1024)   return (bytes/1024).toFixed(1) + ' KB';
+      if (bytes < 1024**3)     return (bytes/(1024*1024)).toFixed(1) + ' MB';
+      return (bytes/(1024**3)).toFixed(2) + ' GB';
+    }
+
+    function fmtCountdown(isoDate) {
+      const diff = new Date(isoDate) - Date.now();
+      if (diff <= 0) return { text: 'Expirado', cls: 'soon' };
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      let text, cls = '';
+      if (h >= 24) {
+        const d = Math.floor(h/24);
+        text = d + ' día' + (d>1?'s':'');
+      } else if (h > 0) {
+        text = h + ' h ' + m + ' min';
+        if (h < 4) cls = 'expiring';
+      } else {
+        text = m + ' min';
+        cls = m < 30 ? 'soon' : 'expiring';
+      }
+      return { text, cls };
+    }
+
+    function fileEmoji(mime, name) {
+      if (!mime && !name) return '📄';
+      const m = (mime || '').toLowerCase();
+      const ext = (name || '').split('.').pop().toLowerCase();
+      if (m.startsWith('image/'))  return '🖼️';
+      if (m.startsWith('video/'))  return '🎬';
+      if (m.startsWith('audio/'))  return '🎵';
+      if (m.includes('pdf'))       return '📕';
+      if (m.includes('zip') || m.includes('tar') || m.includes('rar') || ['zip','rar','7z','gz','tar'].includes(ext)) return '🗜️';
+      if (m.includes('word') || ['doc','docx'].includes(ext)) return '📝';
+      if (m.includes('excel') || ['xls','xlsx','csv'].includes(ext)) return '📊';
+      if (m.includes('powerpoint') || ['ppt','pptx'].includes(ext)) return '📋';
+      if (['js','ts','py','java','cpp','c','cs','html','css','json','xml','sh'].includes(ext)) return '💻';
+      return '📄';
+    }
+
+    // ── Main ────────────────────────────────────────────────
+    (async function() {
+      // Extract ID from path:  /d/XXXX  or  /download.html?id=XXXX
+      let id = null;
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('id')) {
+        id = urlParams.get('id');
+      } else {
+        const parts = window.location.pathname.split('/');
+        id = parts[parts.length - 1] || parts[parts.length - 2];
+      }
+
+      if (!id || id === 'download.html') {
+        show('state-error');
+        document.getElementById('errorTitle').textContent = 'Enlace inválido';
+        document.getElementById('errorMsg').textContent   = 'No se encontró ningún ID de transferencia en la URL.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/.netlify/functions/get-file?id=${encodeURIComponent(id)}`);
+        const data = await res.json();
+
+        if (res.status === 410) {
+          show('state-expired');
+          return;
+        }
+        if (!res.ok) {
+          show('state-error');
+          document.getElementById('errorMsg').textContent = data.error || 'Error desconocido.';
+          return;
+        }
+
+        // Populate UI
+        document.getElementById('fileIcon').textContent  = fileEmoji(data.mimetype, data.filename);
+        document.getElementById('fileName').textContent  = data.filename;
+        document.getElementById('fileSize').textContent  = fmtBytes(data.filesize);
+
+        const countdown = fmtCountdown(data.expiresAt);
+        const expiryEl  = document.getElementById('metaExpiry');
+        expiryEl.textContent = countdown.text;
+        if (countdown.cls) expiryEl.classList.add(countdown.cls);
+
+        document.getElementById('metaDownloads').textContent = data.downloadCount;
+        document.getElementById('btnDownload').href           = data.downloadUrl;
+
+        show('state-ready');
+
+        // Live countdown refresh every minute
+        setInterval(() => {
+          const c = fmtCountdown(data.expiresAt);
+          expiryEl.textContent = c.text;
+          expiryEl.className   = 'meta-value' + (c.cls ? ' ' + c.cls : '');
+        }, 60_000);
+
+      } catch (err) {
+        show('state-error');
+        document.getElementById('errorMsg').textContent = 'Error de red. Comprueba tu conexión e inténtalo de nuevo.';
+      }
+    })();
+  </script>
+</body>
+</html>

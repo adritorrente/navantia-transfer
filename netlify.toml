@@ -1,0 +1,20 @@
+[build]
+  functions = "netlify/functions"
+  publish    = "."
+
+[functions]
+  node_bundler = "esbuild"
+
+# Limpieza automática cada hora
+[functions."cleanup"]
+  schedule = "@hourly"
+
+[[redirects]]
+  from = "/d/*"
+  to   = "/download.html"
+  status = 200
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
