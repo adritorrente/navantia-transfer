@@ -155,6 +155,53 @@
       color: var(--gray);
     }
 
+    /* Password state */
+    #state-password .lock-icon { font-size: 3rem; margin-bottom: 16px; }
+    #state-password h2 { font-size: 1.3rem; color: var(--navy); margin-bottom: 8px; }
+    #state-password p  { color: var(--gray); font-size: .9rem; margin-bottom: 24px; }
+    .pw-wrap {
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .pw-wrap input {
+      width: 100%;
+      padding: 13px 44px 13px 16px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      color: var(--navy);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .pw-wrap input:focus { border-color: var(--blue); }
+    .pw-wrap input.shake { animation: shake .4s; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)}
+    }
+    .pw-wrap button {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 18px; color: var(--gray);
+    }
+    .btn-unlock {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--blue), var(--sky));
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-unlock:disabled { opacity: .5; cursor: not-allowed; }
+    .pw-error {
+      font-size: .82rem;
+      color: var(--red);
+      margin-top: 8px;
+      min-height: 18px;
+    }
+
     /* Expired / Error */
     .error-icon {
       font-size: 3.5rem;
@@ -251,6 +298,20 @@
         <p class="powered">Transferencias seguras · Auto-eliminación 48 h · Navantia Transfer</p>
       </div>
 
+      <!-- PASSWORD REQUIRED -->
+      <div class="state" id="state-password">
+        <div class="lock-icon">🔒</div>
+        <h2>Archivo protegido</h2>
+        <p id="pwFileLabel">Este archivo está protegido con contraseña.<br>Introdúcela para continuar.</p>
+        <div class="pw-wrap">
+          <input type="password" id="pwInput" placeholder="Contraseña…" autocomplete="current-password"
+                 onkeydown="if(event.key==='Enter') unlockFile()"/>
+          <button type="button" onclick="togglePwEye()" id="pwEye">👁</button>
+        </div>
+        <div class="pw-error" id="pwError"></div>
+        <button class="btn-unlock" id="btnUnlock" onclick="unlockFile()">Desbloquear</button>
+      </div>
+
       <!-- EXPIRED -->
       <div class="state" id="state-expired">
         <div class="error-icon">⏰</div>
@@ -330,18 +391,80 @@
     }
 
     // ── Main ────────────────────────────────────────────────
-    (async function() {
-      // Extract ID from path:  /d/XXXX  or  /download.html?id=XXXX
-      let id = null;
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('id')) {
-        id = urlParams.get('id');
-      } else {
-        const parts = window.location.pathname.split('/');
-        id = parts[parts.length - 1] || parts[parts.length - 2];
-      }
+    let transferId = null;
 
-      if (!id || id === 'download.html') {
+    function getTransferId() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('id')) return urlParams.get('id');
+      const parts = window.location.pathname.split('/');
+      return parts[parts.length - 1] || parts[parts.length - 2];
+    }
+
+    function populateReady(data) {
+      document.getElementById('fileIcon').textContent  = fileEmoji(data.mimetype, data.filename);
+      document.getElementById('fileName').textContent  = data.filename;
+      document.getElementById('fileSize').textContent  = fmtBytes(data.filesize);
+      const countdown = fmtCountdown(data.expiresAt);
+      const expiryEl  = document.getElementById('metaExpiry');
+      expiryEl.textContent = countdown.text;
+      if (countdown.cls) expiryEl.classList.add(countdown.cls);
+      document.getElementById('metaDownloads').textContent = data.downloadCount;
+      document.getElementById('btnDownload').href           = data.downloadUrl;
+      show('state-ready');
+      setInterval(() => {
+        const c = fmtCountdown(data.expiresAt);
+        expiryEl.textContent = c.text;
+        expiryEl.className   = 'meta-value' + (c.cls ? ' ' + c.cls : '');
+      }, 60_000);
+    }
+
+    async function fetchFile(password) {
+      const url = `/.netlify/functions/get-file?id=${encodeURIComponent(transferId)}`
+                + (password ? `&password=${encodeURIComponent(password)}` : '');
+      const res  = await fetch(url);
+      const data = await res.json();
+      return { status: res.status, data };
+    }
+
+    async function unlockFile() {
+      const pw    = document.getElementById('pwInput').value;
+      const btn   = document.getElementById('btnUnlock');
+      const errEl = document.getElementById('pwError');
+      if (!pw) { errEl.textContent = 'Escribe la contraseña.'; return; }
+      btn.disabled = true;
+      errEl.textContent = '';
+      try {
+        const { status, data } = await fetchFile(pw);
+        if (status === 401) {
+          errEl.textContent = '❌ Contraseña incorrecta. Inténtalo de nuevo.';
+          const inp = document.getElementById('pwInput');
+          inp.classList.add('shake');
+          inp.addEventListener('animationend', () => inp.classList.remove('shake'), { once: true });
+          inp.select();
+        } else if (status === 200) {
+          populateReady(data);
+        } else {
+          errEl.textContent = data.error || 'Error desconocido.';
+        }
+      } catch {
+        errEl.textContent = 'Error de red. Inténtalo de nuevo.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function togglePwEye() {
+      const inp = document.getElementById('pwInput');
+      const eye = document.getElementById('pwEye');
+      const show2 = inp.type === 'password';
+      inp.type = show2 ? 'text' : 'password';
+      eye.textContent = show2 ? '🙈' : '👁';
+    }
+
+    (async function() {
+      transferId = getTransferId();
+
+      if (!transferId || transferId === 'download.html') {
         show('state-error');
         document.getElementById('errorTitle').textContent = 'Enlace inválido';
         document.getElementById('errorMsg').textContent   = 'No se encontró ningún ID de transferencia en la URL.';
@@ -349,40 +472,28 @@
       }
 
       try {
-        const res = await fetch(`/.netlify/functions/get-file?id=${encodeURIComponent(id)}`);
-        const data = await res.json();
+        const { status, data } = await fetchFile(null);
 
-        if (res.status === 410) {
-          show('state-expired');
+        if (status === 410) { show('state-expired'); return; }
+
+        if (status === 200 && data.requiresPassword) {
+          // Mostrar formulario de contraseña (con nombre de archivo si lo tenemos)
+          if (data.filename) {
+            document.getElementById('pwFileLabel').innerHTML =
+              `<strong>${data.filename}</strong> está protegido con contraseña.<br>Introdúcela para continuar.`;
+          }
+          show('state-password');
+          document.getElementById('pwInput').focus();
           return;
         }
-        if (!res.ok) {
+
+        if (!status || status >= 400) {
           show('state-error');
           document.getElementById('errorMsg').textContent = data.error || 'Error desconocido.';
           return;
         }
 
-        // Populate UI
-        document.getElementById('fileIcon').textContent  = fileEmoji(data.mimetype, data.filename);
-        document.getElementById('fileName').textContent  = data.filename;
-        document.getElementById('fileSize').textContent  = fmtBytes(data.filesize);
-
-        const countdown = fmtCountdown(data.expiresAt);
-        const expiryEl  = document.getElementById('metaExpiry');
-        expiryEl.textContent = countdown.text;
-        if (countdown.cls) expiryEl.classList.add(countdown.cls);
-
-        document.getElementById('metaDownloads').textContent = data.downloadCount;
-        document.getElementById('btnDownload').href           = data.downloadUrl;
-
-        show('state-ready');
-
-        // Live countdown refresh every minute
-        setInterval(() => {
-          const c = fmtCountdown(data.expiresAt);
-          expiryEl.textContent = c.text;
-          expiryEl.className   = 'meta-value' + (c.cls ? ' ' + c.cls : '');
-        }, 60_000);
+        populateReady(data);
 
       } catch (err) {
         show('state-error');

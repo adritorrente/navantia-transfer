@@ -59,6 +59,16 @@
     .remove-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;padding:4px;transition:color .15s}
     .remove-btn:hover{color:var(--red)}
 
+    /* Password field */
+    .pw-field{margin-bottom:16px}
+    .pw-label{display:flex;align-items:center;gap:7px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin-bottom:7px;cursor:pointer;user-select:none}
+    .pw-label input[type=checkbox]{width:15px;height:15px;accent-color:var(--blue);cursor:pointer}
+    .pw-input-wrap{display:none;position:relative}
+    .pw-input-wrap.visible{display:block}
+    .pw-input{width:100%;padding:11px 40px 11px 14px;border:1.5px solid var(--border);border-radius:9px;font-family:'Barlow',sans-serif;font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color .15s}
+    .pw-input:focus{border-color:var(--blue)}
+    .pw-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:17px;padding:2px}
+
     /* Progress */
     .progress{display:none;margin-bottom:18px}
     .progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px}
@@ -136,6 +146,18 @@
       </div>
       <button class="remove-btn" onclick="resetUI()" title="Quitar">✕</button>
     </div>
+    <!-- Optional password -->
+    <div class="pw-field">
+      <label class="pw-label">
+        <input type="checkbox" id="pwCheck" onchange="togglePw(this)"/>
+        🔒 Proteger con contraseña
+      </label>
+      <div class="pw-input-wrap" id="pwWrap">
+        <input type="password" id="pwInput" class="pw-input" placeholder="Escribe una contraseña…" autocomplete="new-password"/>
+        <button class="pw-eye" type="button" onclick="toggleEye()" id="pwEye">👁</button>
+      </div>
+    </div>
+
     <div class="progress" id="progressBox">
       <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
       <div class="progress-txt" id="progressTxt">Preparando…</div>
@@ -155,7 +177,10 @@
       <input class="link-txt" id="shareLink" readonly onclick="this.select()"/>
       <button class="copy-btn" id="copyBtn" onclick="copyLink()">Copiar</button>
     </div>
-    <div class="expiry-badge">⏱ Expira en <span id="countdown">48 h 00 min</span></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <div class="expiry-badge">⏱ Expira en <span id="countdown">48 h 00 min</span></div>
+      <div class="expiry-badge" id="pwBadge" style="display:none!important">🔒 Con contraseña</div>
+    </div>
     <button class="new-btn" onclick="resetUI()">+ Enviar otro archivo</button>
   </div>
 </div>
@@ -165,6 +190,18 @@
 <script>
 const MAX_BYTES = 100 * 1024 * 1024;
 let selectedFile = null, expiresAt = null;
+
+function togglePw(cb) {
+  document.getElementById('pwWrap').classList.toggle('visible', cb.checked);
+  if (!cb.checked) document.getElementById('pwInput').value = '';
+}
+function toggleEye() {
+  const inp = document.getElementById('pwInput');
+  const eye = document.getElementById('pwEye');
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  eye.textContent = show ? '🙈' : '👁';
+}
 
 const ICONS = {
   pdf:'📕', doc:'📘', docx:'📘', xls:'📗', xlsx:'📗',
@@ -214,7 +251,14 @@ async function startUpload() {
     const res = await fetch('/.netlify/functions/create-upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: selectedFile.name, filesize: selectedFile.size, mimetype: selectedFile.type }),
+      body: JSON.stringify({
+        filename: selectedFile.name,
+        filesize: selectedFile.size,
+        mimetype: selectedFile.type,
+        password: document.getElementById('pwCheck').checked
+          ? (document.getElementById('pwInput').value.trim() || undefined)
+          : undefined,
+      }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al preparar la subida');
@@ -231,6 +275,10 @@ async function startUpload() {
     expiresAt = Date.now() + 48 * 3600 * 1000;
     document.getElementById('shareLink').value = link;
     document.getElementById('fileInfo').style.display = 'none';
+    // Mostrar badge de contraseña si se usó
+    const pwBadge = document.getElementById('pwBadge');
+    pwBadge.style.display = (document.getElementById('pwCheck').checked && document.getElementById('pwInput').value.trim())
+      ? 'inline-flex' : 'none';
     show('successBox');
     tickCountdown();
 
@@ -283,6 +331,9 @@ function resetUI() {
   selectedFile = null;
   document.getElementById('fileInput').value = '';
   document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('pwCheck').checked = false;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwWrap').classList.remove('visible');
   hide('successBox'); hide('errMsg');
   document.getElementById('uploadBtn').disabled = false;
   show('dropZone');

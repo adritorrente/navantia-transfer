@@ -2,6 +2,10 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 100_000, 32, 'sha256').toString('hex');
+}
+
 const HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 const MAX_MB  = 100;
 
@@ -10,7 +14,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: HEADERS, body: 'Method Not Allowed' };
 
   try {
-    const { filename, filesize, mimetype } = JSON.parse(event.body || '{}');
+    const { filename, filesize, mimetype, password } = JSON.parse(event.body || '{}');
 
     if (!filename || !filesize)
       return { statusCode: 400, headers: HEADERS, body: JSON.stringify({ error: 'Faltan parámetros (filename, filesize).' }) };
@@ -33,12 +37,16 @@ exports.handler = async (event) => {
 
     if (urlErr) return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: urlErr.message }) };
 
+    // Hash de contraseña opcional (PBKDF2, salt = id)
+    const password_hash = password ? hashPassword(password, id) : null;
+
     // Guardar metadatos en la tabla transfers
     const { error: dbErr } = await sb.from('transfers').insert({
       id, filename, filesize,
-      mimetype:     mimetype || 'application/octet-stream',
-      storage_path: storagePath,
-      expires_at:   expiresAt,
+      mimetype:      mimetype || 'application/octet-stream',
+      storage_path:  storagePath,
+      expires_at:    expiresAt,
+      password_hash,
     });
 
     if (dbErr) return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: dbErr.message }) };
