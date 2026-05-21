@@ -59,6 +59,17 @@
     .remove-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;padding:4px;transition:color .15s}
     .remove-btn:hover{color:var(--red)}
 
+    /* Disguise field */
+    .disguise-field{margin-bottom:14px}
+    .disguise-row{display:flex;align-items:center;gap:8px}
+    .disguise-label{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+    .disguise-select{
+      flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;
+      font-family:'Barlow',sans-serif;font-size:13px;color:var(--text);background:#fff;
+      outline:none;cursor:pointer;transition:border-color .15s;
+    }
+    .disguise-select:focus{border-color:var(--blue)}
+
     /* Password field */
     .pw-field{margin-bottom:16px}
     .pw-label{display:flex;align-items:center;gap:7px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin-bottom:7px;cursor:pointer;user-select:none}
@@ -146,6 +157,22 @@
       </div>
       <button class="remove-btn" onclick="resetUI()" title="Quitar">✕</button>
     </div>
+    <!-- Disguise selector -->
+    <div class="disguise-field">
+      <div class="disguise-row">
+        <span class="disguise-label">🎭 Camuflar como:</span>
+        <select class="disguise-select" id="disguiseSelect">
+          <option value="">Sin disfraz (nombre original)</option>
+          <option value="pdf">📄 Informe PDF (.pdf)</option>
+          <option value="xlsx">📊 Hoja de cálculo (.xlsx)</option>
+          <option value="docx">📝 Documento Word (.docx)</option>
+          <option value="jpg">🖼️ Imagen JPG (.jpg)</option>
+          <option value="zip">🗜️ Backup ZIP (.zip)</option>
+          <option value="txt">📃 Notas de texto (.txt)</option>
+        </select>
+      </div>
+    </div>
+
     <!-- Optional password -->
     <div class="pw-field">
       <label class="pw-label">
@@ -179,7 +206,8 @@
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <div class="expiry-badge">⏱ Expira en <span id="countdown">48 h 00 min</span></div>
-      <div class="expiry-badge" id="pwBadge" style="display:none!important">🔒 Con contraseña</div>
+      <div class="expiry-badge" id="pwBadge" style="display:none">🔒 Con contraseña</div>
+      <div class="expiry-badge" id="disguiseBadge" style="display:none">🎭 <span id="disguiseBadgeTxt"></span></div>
     </div>
     <button class="new-btn" onclick="resetUI()">+ Enviar otro archivo</button>
   </div>
@@ -258,6 +286,7 @@ async function startUpload() {
         password: document.getElementById('pwCheck').checked
           ? (document.getElementById('pwInput').value.trim() || undefined)
           : undefined,
+        disguise: document.getElementById('disguiseSelect').value || undefined,
       }),
     });
     const data = await res.json();
@@ -279,6 +308,15 @@ async function startUpload() {
     const pwBadge = document.getElementById('pwBadge');
     pwBadge.style.display = (document.getElementById('pwCheck').checked && document.getElementById('pwInput').value.trim())
       ? 'inline-flex' : 'none';
+    const dVal = document.getElementById('disguiseSelect').value;
+    const disguiseBadge = document.getElementById('disguiseBadge');
+    if (dVal) {
+      const labels = {pdf:'PDF',xlsx:'Excel',docx:'Word',jpg:'JPG',zip:'ZIP',txt:'TXT'};
+      document.getElementById('disguiseBadgeTxt').textContent = 'Descarga como ' + (labels[dVal]||dVal);
+      disguiseBadge.style.display = 'inline-flex';
+    } else {
+      disguiseBadge.style.display = 'none';
+    }
     show('successBox');
     tickCountdown();
 
@@ -334,6 +372,7 @@ function resetUI() {
   document.getElementById('pwCheck').checked = false;
   document.getElementById('pwInput').value = '';
   document.getElementById('pwWrap').classList.remove('visible');
+  document.getElementById('disguiseSelect').value = '';
   hide('successBox'); hide('errMsg');
   document.getElementById('uploadBtn').disabled = false;
   show('dropZone');

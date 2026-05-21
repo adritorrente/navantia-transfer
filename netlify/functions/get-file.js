@@ -49,10 +49,12 @@ exports.handler = async (event) => {
     }
 
     // URL firmada de descarga válida 10 minutos
+    // Si tiene disfraz, el receptor descarga con el nombre camuflado
+    const downloadName = transfer.disguise_name || transfer.filename;
     const { data: dlData, error: dlErr } = await sb.storage
       .from('transfers')
       .createSignedUrl(transfer.storage_path, 600, {
-        download: transfer.filename, // fuerza el nombre correcto al descargar
+        download: downloadName,
       });
 
     if (dlErr) return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: dlErr.message }) };
@@ -72,6 +74,7 @@ exports.handler = async (event) => {
         expiresAt:     transfer.expires_at,
         downloadCount: transfer.download_count || 0,
         downloadUrl:   dlData.signedUrl,
+        disguiseName:  transfer.disguise_name || null,
       }),
     };
   } catch (e) {
