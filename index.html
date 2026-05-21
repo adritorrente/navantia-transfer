@@ -213,7 +213,7 @@ const ICONS = {
 };
 const fileIcon = f => ICONS[f.split('.').pop()?.toLowerCase()] || '📄';
 const fmtSize  = b => b >= 1e6 ? (b/1e6).toFixed(1)+' MB' : b >= 1e3 ? (b/1e3).toFixed(0)+' KB' : b+' B';
-const show = id => document.getElementById(id).style.display = '';
+const show = id => document.getElementById(id).style.display = 'block';
 const hide = id => document.getElementById(id).style.display = 'none';
 
 function onFileSelect(file) {
